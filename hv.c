@@ -34,7 +34,10 @@ holds the key and hash value.
 #define PERL_HASH_INTERNAL_ACCESS
 #include "perl.h"
 
-#define DO_HSPLIT(xhv) ((xhv)->xhv_keys > (xhv)->xhv_max) /* HvTOTALKEYS(hv) > HvMAX(hv) */
+
+inline int DO_HSPLIT(XPVHV * const xhv) {
+    return (xhv)->xhv_keys > (xhv)->xhv_max; /* HvTOTALKEYS(hv) > HvMAX(hv) */
+}
 #define HV_FILL_THRESHOLD 31
 
 static const char S_strtab_error[]
@@ -42,8 +45,13 @@ static const char S_strtab_error[]
 
 #ifdef PURIFY
 
-#define new_HE() (HE*)safemalloc(sizeof(HE))
-#define del_HE(p) safefree((char*)p)
+inline HE* new_HE() {
+    return (HE*)safemalloc(sizeof(HE));
+}
+
+inline void del_HE(char *p) {
+    safefree((char*)p);
+}
 
 #else
 
@@ -62,11 +70,10 @@ S_new_he(pTHX)
 }
 
 #define new_HE() new_he()
-#define del_HE(p) \
-    STMT_START { \
-        HeNEXT(p) = (HE*)(PL_body_roots[HE_SVSLOT]);	\
-        PL_body_roots[HE_SVSLOT] = p; \
-    } STMT_END
+inline void del_HE(HE *p) {
+    HeNEXT(p) = (HE*)(PL_body_roots[HE_SVSLOT]);
+    PL_body_roots[HE_SVSLOT] = p;
+}
 
 
 
@@ -1388,16 +1395,16 @@ Perl_hv_ksplit(pTHX_ HV *hv, IV newmax)
 /* IMO this should also handle cases where hv_max is smaller than hv_keys
  * as tied hashes could play silly buggers and mess us around. We will
  * do the right thing during hv_store() afterwards, but still - Yves */
-#define HV_SET_MAX_ADJUSTED_FOR_KEYS(hv,hv_max,hv_keys) STMT_START {\
-    /* Can we use fewer buckets? (hv_max is always 2^n-1) */        \
-    if (hv_max < PERL_HASH_DEFAULT_HvMAX) {                         \
-        hv_max = PERL_HASH_DEFAULT_HvMAX;                           \
-    } else {                                                        \
-        while (hv_max > PERL_HASH_DEFAULT_HvMAX && hv_max + 1 >= hv_keys * 2) \
-            hv_max = hv_max / 2;                                    \
-    }                                                               \
-    HvMAX(hv) = hv_max;                                             \
-} STMT_END
+inline void HV_SET_MAX_ADJUSTED_FOR_KEYS(HV * const hv, STRLEN hv_max, STRLEN hv_keys) {
+    /* Can we use fewer buckets? (hv_max is always 2^n-1) */
+    if (hv_max < PERL_HASH_DEFAULT_HvMAX) {
+        hv_max = PERL_HASH_DEFAULT_HvMAX;
+    } else {
+        while (hv_max > PERL_HASH_DEFAULT_HvMAX && hv_max + 1 >= hv_keys * 2)
+            hv_max = hv_max / 2;
+    }
+    HvMAX(hv) = hv_max;
+}
 
 
 HV *
