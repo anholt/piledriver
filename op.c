@@ -160,8 +160,13 @@ S_prune_chain_head(OP** op_p)
 #endif
 
 /* rounds up to nearest pointer */
-#define SIZE_TO_PSIZE(x)	(((x) + sizeof(I32 *) - 1)/sizeof(I32 *))
-#define DIFF(o,p)		((size_t)((I32 **)(p) - (I32**)(o)))
+inline size_t SIZE_TO_PSIZE(size_t x) {
+    return (x + sizeof(I32 *) - 1) / sizeof(I32 *);
+}
+
+inline size_t DIFF_OPSLOTS(OPSLOT *o, OPSLOT *p) {
+    return (size_t)((I32 **)p - (I32**)o);
+}
 
 static OPSLAB *
 S_new_slab(pTHX_ size_t sz)
@@ -240,7 +245,7 @@ Perl_Slab_Alloc(pTHX_ size_t sz)
         OP **too = &slab->opslab_freed;
         o = *too;
         DEBUG_S_warn((aTHX_ "found free op at %p, slab %p", (void*)o, (void*)slab));
-        while (o && DIFF(OpSLOT(o), OpSLOT(o)->opslot_next) < sz) {
+        while (o && DIFF_OPSLOTS(OpSLOT(o), OpSLOT(o)->opslot_next) < sz) {
             DEBUG_S_warn((aTHX_ "Alas! too small"));
             o = *(too = &o->op_next);
             if (o) { DEBUG_S_warn((aTHX_ "found another free op at %p", (void*)o)); }
@@ -262,7 +267,7 @@ Perl_Slab_Alloc(pTHX_ size_t sz)
 
     /* The partially-filled slab is next in the chain. */
     slab2 = slab->opslab_next ? slab->opslab_next : slab;
-    if ((space = DIFF(&slab2->opslab_slots, slab2->opslab_first)) < sz) {
+    if ((space = DIFF_OPSLOTS(&slab2->opslab_slots, slab2->opslab_first)) < sz) {
         /* Remaining space is too small. */
 
         /* If we can fit a BASEOP, add it to the free chain, so as not
@@ -279,18 +284,18 @@ Perl_Slab_Alloc(pTHX_ size_t sz)
         slot = slab2->opslab_first;
         while (slot->opslot_next) slot = slot->opslot_next;
         slab2 = S_new_slab(aTHX_
-                            (DIFF(slab2, slot)+1)*2 > PERL_MAX_SLAB_SIZE
+                           (DIFF_OPSLOTS((OPSLOT *)slab2, slot)+1)*2 > PERL_MAX_SLAB_SIZE
                                         ? PERL_MAX_SLAB_SIZE
-                                        : (DIFF(slab2, slot)+1)*2);
+                                        : (DIFF_OPSLOTS((OPSLOT *)slab2, slot)+1)*2);
         slab2->opslab_next = slab->opslab_next;
         slab->opslab_next = slab2;
     }
-    assert(DIFF(&slab2->opslab_slots, slab2->opslab_first) >= sz);
+    assert(DIFF_OPSLOTS(&slab2->opslab_slots, slab2->opslab_first) >= sz);
 
     /* Create a new op slot */
     slot = (OPSLOT *)((I32 **)slab2->opslab_first - sz);
     assert(slot >= &slab2->opslab_slots);
-    if (DIFF(&slab2->opslab_slots, slot)
+    if (DIFF_OPSLOTS(&slab2->opslab_slots, slot)
          < SIZE_TO_PSIZE(sizeof(OP)) + OPSLOT_HEADER_P)
         slot = &slab2->opslab_slots;
     INIT_OPSLOT;
@@ -7501,8 +7506,9 @@ Perl_newFOROP(pTHX_ I32 flags, OP *sv, OP *expr, OP *block, OP *cont)
      * for our $x () sets OPpOUR_INTRO */
     loop->op_private = (U8)iterpflags;
     if (loop->op_slabbed
-     && DIFF(loop, OpSLOT(loop)->opslot_next)
-         < SIZE_TO_PSIZE(sizeof(LOOP)))
+        && DIFF_OPSLOTS((OPSLOT *)loop, OpSLOT(loop)->opslot_next) <
+           SIZE_TO_PSIZE(sizeof(LOOP))
+    )
     {
         LOOP *tmp;
         NewOp(1234,tmp,1,LOOP);
