@@ -123,6 +123,7 @@ Pops a long off the stack.
 #define RETURN		STMT_START { PUTBACK; return NORMAL; } STMT_END
 #define RETURNOP(o)	STMT_START { PUTBACK; return o; } STMT_END
 #define RETURNX(x)	STMT_START { x; RETURN; } STMT_END
+#define NORMAL_RETURN	(PUTBACK, NORMAL)
 
 #define POPs		(*sp--)
 #define POPp		POPpx

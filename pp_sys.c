@@ -347,7 +347,7 @@ PP(pp_backtick)
             RETPUSHUNDEF;
     }
 
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_glob)
@@ -642,7 +642,7 @@ PP(pp_open)
         PUSHi(0);
     else
         RETPUSHUNDEF;
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_close)
@@ -664,7 +664,7 @@ PP(pp_close)
         }
     }
     PUSHs(boolSV(do_close(gv, TRUE)));
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_pipe_op)
@@ -746,7 +746,7 @@ PP(pp_fileno)
     if (io && IoDIRP(io)) {
 #if defined(HAS_DIRFD) || defined(HAS_DIR_DD_FD)
         PUSHi(my_dirfd(IoDIRP(io)));
-        RETURN;
+        return NORMAL_RETURN;
 #else
 #if defined(ENOTSUP)
         errno = ENOTSUP;        /* Operation not supported */
@@ -769,7 +769,7 @@ PP(pp_fileno)
     }
 
     PUSHi(PerlIO_fileno(fp));
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_umask)
@@ -799,7 +799,7 @@ PP(pp_umask)
         DIE(aTHX_ "umask not implemented");
     XPUSHs(&PL_sv_undef);
 #endif
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_binmode)
@@ -967,7 +967,7 @@ PP(pp_tie)
     LEAVE_with_name("call_TIE");
     SP = PL_stack_base + markoff;
     PUSHs(sv);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 
@@ -1089,7 +1089,7 @@ PP(pp_dbmopen)
         sv_magic(MUTABLE_SV(hv), TOPs, PERL_MAGIC_tied, NULL, 0);
     }
     LEAVE;
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_sselect)
@@ -1252,7 +1252,7 @@ PP(pp_sselect)
                 (NV)(timebuf.tv_usec) / 1000000.0;
         mPUSHn(value);
     }
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ "select not implemented");
 #endif
@@ -1309,7 +1309,7 @@ PP(pp_select)
         setdefout(newdefout);
     }
 
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_getc)
@@ -1355,7 +1355,7 @@ PP(pp_getc)
     }
     else SvUTF8_off(TARG);
     PUSHTARG;
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 STATIC OP *
@@ -1594,12 +1594,12 @@ PP(pp_prtf)
     }
     SP = ORIGMARK;
     PUSHyes;
-    RETURN;
+    return NORMAL_RETURN;
 
   just_say_no:
     SP = ORIGMARK;
     PUSHundef;
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_sysopen)
@@ -1620,7 +1620,7 @@ PP(pp_sysopen)
     else {
         PUSHundef;
     }
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 
@@ -1747,7 +1747,7 @@ PP(pp_sysread)
 #endif
         sv_setpvn(TARG, namebuf, bufsize);
         PUSHs(TARG);
-        RETURN;
+        return NORMAL_RETURN;
     }
 #endif
     if (offset < 0) {
@@ -1875,7 +1875,7 @@ PP(pp_sysread)
         SvTAINTED_on(bufsv);
     SP = ORIGMARK;
     PUSHi(count);
-    RETURN;
+    return NORMAL_RETURN;
 
   say_undef:
     SP = ORIGMARK;
@@ -2078,7 +2078,7 @@ PP(pp_syswrite)
 #else
     PUSHi(retval);
 #endif
-    RETURN;
+    return NORMAL_RETURN;
 
   say_undef:
     Safefree(tmpbuf);
@@ -2150,7 +2150,7 @@ PP(pp_eof)
     }
 
     PUSHs(boolSV(do_eof(gv)));
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_tell)
@@ -2176,7 +2176,7 @@ PP(pp_tell)
         if (!errno)
             SETERRNO(EBADF,RMS_IFI);
         PUSHi(-1);
-        RETURN;
+        return NORMAL_RETURN;
     }
 
 #if LSEEKSIZE > IVSIZE
@@ -2184,7 +2184,7 @@ PP(pp_tell)
 #else
     PUSHi( do_tell(gv) );
 #endif
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 
@@ -2234,7 +2234,7 @@ PP(pp_sysseek)
             mPUSHs(sv);
         }
     }
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_truncate)
@@ -2401,7 +2401,7 @@ PP(pp_ioctl)
         PUSHp(zero_but_true, ZBTLEN);
     }
 #endif
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_flock)
@@ -2425,7 +2425,7 @@ PP(pp_flock)
         SETERRNO(EBADF,RMS_IFI);
     }
     PUSHi(value);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "flock");
 #endif
@@ -2636,7 +2636,7 @@ PP(pp_accept)
 #endif
 
     PUSHp(namebuf, len);
-    RETURN;
+    return NORMAL_RETURN;
 
   nuts:
     report_evil_fh(ggv);
@@ -2658,7 +2658,7 @@ PP(pp_shutdown)
         goto nuts;
 
     PUSHi( PerlSock_shutdown(PerlIO_fileno(IoIFP(io)), how) >= 0 );
-    RETURN;
+    return NORMAL_RETURN;
 
   nuts:
     report_evil_fh(gv);
@@ -2738,7 +2738,7 @@ PP(pp_ssockopt)
         }
         break;
     }
-    RETURN;
+    return NORMAL_RETURN;
 
   nuts:
     report_evil_fh(gv);
@@ -2802,7 +2802,7 @@ PP(pp_getpeername)
     SvCUR_set(sv, len);
     *SvEND(sv) ='\0';
     PUSHs(sv);
-    RETURN;
+    return NORMAL_RETURN;
 
   nuts:
     report_evil_fh(gv);
@@ -2911,7 +2911,7 @@ PP(pp_stat)
     if (gimme != G_ARRAY) {
         if (gimme != G_VOID)
             XPUSHs(boolSV(max));
-        RETURN;
+        return NORMAL_RETURN;
     }
     if (max) {
         EXTEND(SP, max);
@@ -2959,7 +2959,7 @@ PP(pp_stat)
         PUSHs(newSVpvs_flags("", SVs_TEMP));
 #endif
     }
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 /* All filetest ops avoid manipulating the perl stack pointer in their main
@@ -3596,7 +3596,7 @@ PP(pp_chdir)
         else {
             PUSHi(0);
             TAINT_PROPER("chdir");
-            RETURN;
+            return NORMAL_RETURN;
         }
     }
 
@@ -3632,14 +3632,14 @@ PP(pp_chdir)
      * in the future. */
     hv_delete(GvHVn(PL_envgv),"DEFAULT",7,G_DISCARD);
 #endif
-    RETURN;
+    return NORMAL_RETURN;
 
 #ifdef HAS_FCHDIR
  nuts:
     report_evil_fh(gv);
     SETERRNO(EBADF,RMS_IFI);
     PUSHi(0);
-    RETURN;
+    return NORMAL_RETURN;
 #endif
 }
 
@@ -3690,7 +3690,7 @@ PP(pp_chmod)
 
     SP = ORIGMARK;
     XPUSHi(tot);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_chown)
@@ -3752,7 +3752,7 @@ PP(pp_chown)
 
     SP = ORIGMARK;
     XPUSHi(tot);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_chroot)
@@ -3762,7 +3762,7 @@ PP(pp_chroot)
     char * const tmps = POPpx;
     TAINT_PROPER("chroot");
     PUSHi( chroot(tmps) >= 0 );
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "chroot");
 #endif
@@ -3791,7 +3791,7 @@ PP(pp_kill)
     /* No arguments */
     if (mark == sp) {
         XPUSHi(tot);
-        RETURN;
+        return NORMAL_RETURN;
     }
 
     s = SvPVx_const(*++mark, len);
@@ -3876,7 +3876,7 @@ PP(pp_kill)
 
     SP = ORIGMARK;
     XPUSHi(tot);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 
@@ -3902,7 +3902,7 @@ PP(pp_rename)
     }
 #endif
     SETi( anum >= 0 );
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_unlink)
@@ -3942,7 +3942,7 @@ PP(pp_unlink)
 
     SP = ORIGMARK;
     XPUSHi(tot);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 /* also used for: pp_symlink() */
@@ -3985,7 +3985,7 @@ PP(pp_link)
     }
 
     SETi( result >= 0 );
-    RETURN;
+    return NORMAL_RETURN;
 }
 #else
 
@@ -4017,7 +4017,7 @@ PP(pp_readlink)
     if (len != -1)
         buf[len] = '\0';
     PUSHp(buf, len);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     EXTEND(SP, 1);
     RETSETUNDEF;		/* just pretend it's a normal file */
@@ -4153,7 +4153,7 @@ PP(pp_mkdir)
 #endif
     if (copy)
         Safefree(tmps);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_rmdir)
@@ -4172,7 +4172,7 @@ PP(pp_rmdir)
 #endif
     if (copy)
         Safefree(tmps);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 /* Directory calls. */
@@ -4244,13 +4244,13 @@ PP(pp_readdir)
     if (!dp && gimme != G_ARRAY)
         RETPUSHUNDEF;
 
-    RETURN;
+    return NORMAL_RETURN;
 
   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_ISI);
     if (gimme == G_ARRAY)
-        RETURN;
+        return NORMAL_RETURN;
     else
         RETPUSHUNDEF;
 #endif
@@ -4278,7 +4278,7 @@ PP(pp_telldir)
     }
 
     PUSHi( PerlDir_tell(IoDIRP(io)) );
-    RETURN;
+    return NORMAL_RETURN;
   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_ISI);
@@ -4411,7 +4411,7 @@ PP(pp_fork)
 #endif
     }
     PUSHi(childpid);
-    RETURN;
+    return NORMAL_RETURN;
 #else
 #  if defined(USE_ITHREADS) && defined(PERL_IMPLICIT_SYS)
     dSP; dTARGET;
@@ -4423,7 +4423,7 @@ PP(pp_fork)
     if (childpid == -1)
         RETPUSHUNDEF;
     PUSHi(childpid);
-    RETURN;
+    return NORMAL_RETURN;
 #  else
     DIE(aTHX_ PL_no_func, "fork");
 #  endif
@@ -4452,7 +4452,7 @@ PP(pp_wait)
     STATUS_NATIVE_CHILD_SET((childpid > 0) ? argflags : -1);
 #  endif
     XPUSHi(childpid);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "wait");
 #endif
@@ -4482,7 +4482,7 @@ PP(pp_waitpid)
     STATUS_NATIVE_CHILD_SET((result > 0) ? argflags : -1);
 #  endif
     SETi(result);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "waitpid");
 #endif
@@ -4538,7 +4538,7 @@ PP(pp_system)
 #ifdef HAS_SIGPROCMASK
                 sigprocmask(SIG_SETMASK, &oldset, NULL);
 #endif
-                RETURN;
+                return NORMAL_RETURN;
             }
             sleep(5);
         }
@@ -4587,7 +4587,7 @@ PP(pp_system)
                 }
             }
             XPUSHi(STATUS_CURRENT);
-            RETURN;
+            return NORMAL_RETURN;
         }
 #ifdef HAS_SIGPROCMASK
         sigprocmask(SIG_SETMASK, &oldset, NULL);
@@ -4639,7 +4639,7 @@ PP(pp_system)
     XPUSHi(result ? value : STATUS_CURRENT);
 #endif /* !FORK or VMS or OS/2 */
 #endif
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_exec)
@@ -4678,7 +4678,7 @@ PP(pp_exec)
 
     SP = ORIGMARK;
     XPUSHi(value);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_getppid)
@@ -4686,7 +4686,7 @@ PP(pp_getppid)
 #ifdef HAS_GETPPID
     dSP; dTARGET;
     XPUSHi( getppid() );
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "getppid");
 #endif
@@ -4708,7 +4708,7 @@ PP(pp_getpgrp)
     pgrp = getpgrp();
 #endif
     XPUSHi(pgrp);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "getpgrp");
 #endif
@@ -4739,7 +4739,7 @@ PP(pp_setpgrp)
     }
     SETi( setpgrp() >= 0 );
 #endif /* USE_BSDPGRP */
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "setpgrp");
 #endif
@@ -4758,7 +4758,7 @@ PP(pp_getpriority)
     const int who = POPi;
     const int which = TOPi;
     SETi( getpriority(PRIORITY_WHICH_T(which), who) );
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "getpriority");
 #endif
@@ -4773,7 +4773,7 @@ PP(pp_setpriority)
     const int which = TOPi;
     TAINT_PROPER("setpriority");
     SETi( setpriority(PRIORITY_WHICH_T(which), who, niceval) >= 0 );
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "setpriority");
 #endif
@@ -4791,7 +4791,7 @@ PP(pp_time)
 #else
     XPUSHi( time(NULL) );
 #endif
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_tms)
@@ -4809,7 +4809,7 @@ PP(pp_tms)
         mPUSHn(((NV)timesbuf.tms_cutime)/(NV)PL_clocktick);
         mPUSHn(((NV)timesbuf.tms_cstime)/(NV)PL_clocktick);
     }
-    RETURN;
+    return NORMAL_RETURN;
 #else
 #   ifdef PERL_MICRO
     dSP;
@@ -4820,7 +4820,7 @@ PP(pp_tms)
          mPUSHn(0.0);
          mPUSHn(0.0);
     }
-    RETURN;
+    return NORMAL_RETURN;
 #   else
     DIE(aTHX_ "times not implemented");
 #   endif
@@ -4921,7 +4921,7 @@ PP(pp_utime)
 
     SP = ORIGMARK;
     XPUSHi(tot);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 /* The 32 bit int year limits the times we can represent to these
@@ -5015,7 +5015,7 @@ PP(pp_gmtime)
     }
     else {			/* list context */
         if ( err == NULL )
-            RETURN;
+            return NORMAL_RETURN;
 
         EXTEND(SP, 9);
         EXTEND_MORTAL(9);
@@ -5029,7 +5029,7 @@ PP(pp_gmtime)
         mPUSHi(tmbuf.tm_yday);
         mPUSHi(tmbuf.tm_isdst);
     }
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 PP(pp_alarm)
@@ -5042,7 +5042,7 @@ PP(pp_alarm)
     if (anum < 0)
         RETPUSHUNDEF;
     PUSHi(anum);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "alarm");
 #endif
@@ -5064,7 +5064,7 @@ PP(pp_sleep)
     }
     (void)time(&when);
     XPUSHi(when - lasttime);
-    RETURN;
+    return NORMAL_RETURN;
 }
 
 /* Shared memory. */
@@ -5096,7 +5096,7 @@ PP(pp_shmwrite)
 
     SP = MARK;
     PUSHi(value);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     return Perl_pp_semget(aTHX);
 #endif
@@ -5115,7 +5115,7 @@ PP(pp_semget)
     if (anum == -1)
         RETPUSHUNDEF;
     PUSHi(anum);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ "System V IPC is not implemented on this machine");
 #endif
@@ -5137,7 +5137,7 @@ PP(pp_semctl)
     else {
         PUSHp(zero_but_true, ZBTLEN);
     }
-    RETURN;
+    return NORMAL_RETURN;
 #else
     return Perl_pp_semget(aTHX);
 #endif
@@ -5234,7 +5234,7 @@ PP(pp_ghostent)
             else
                 sv_setpv(sv, (char*)hent->h_name);
         }
-        RETURN;
+        return NORMAL_RETURN;
     }
 
     if (hent) {
@@ -5254,7 +5254,7 @@ PP(pp_ghostent)
             PUSHs(sv_mortalcopy(&PL_sv_no));
 #endif /* h_addr */
     }
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_sock_func, PL_op_desc[PL_op->op_type]);
 #endif
@@ -5319,7 +5319,7 @@ PP(pp_gnetent)
             else
                 sv_setpv(sv, nent->n_name);
         }
-        RETURN;
+        return NORMAL_RETURN;
     }
 
     if (nent) {
@@ -5329,7 +5329,7 @@ PP(pp_gnetent)
         mPUSHi(nent->n_net);
     }
 
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_sock_func, PL_op_desc[PL_op->op_type]);
 #endif
@@ -5383,7 +5383,7 @@ PP(pp_gprotoent)
             else
                 sv_setpv(sv, pent->p_name);
         }
-        RETURN;
+        return NORMAL_RETURN;
     }
 
     if (pent) {
@@ -5392,7 +5392,7 @@ PP(pp_gprotoent)
         mPUSHi(pent->p_proto);
     }
 
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_sock_func, PL_op_desc[PL_op->op_type]);
 #endif
@@ -5450,7 +5450,7 @@ PP(pp_gservent)
             else
                 sv_setpv(sv, sent->s_name);
         }
-        RETURN;
+        return NORMAL_RETURN;
     }
 
     if (sent) {
@@ -5460,7 +5460,7 @@ PP(pp_gservent)
         mPUSHs(newSVpv(sent->s_proto, 0));
     }
 
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_sock_func, PL_op_desc[PL_op->op_type]);
 #endif
@@ -5685,7 +5685,7 @@ PP(pp_gpwent)
             else
                 sv_setpv(sv, pwent->pw_name);
         }
-        RETURN;
+        return NORMAL_RETURN;
     }
 
     if (pwent) {
@@ -5787,7 +5787,7 @@ PP(pp_gpwent)
         mPUSHi(pwent->pw_expire);
 #   endif
     }
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, PL_op_desc[PL_op->op_type]);
 #endif
@@ -5829,7 +5829,7 @@ PP(pp_ggrent)
             else
                 sv_setpv(sv, grent->gr_name);
         }
-        RETURN;
+        return NORMAL_RETURN;
     }
 
     if (grent) {
@@ -5856,7 +5856,7 @@ PP(pp_ggrent)
 #endif
     }
 
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, PL_op_desc[PL_op->op_type]);
 #endif
@@ -5872,7 +5872,7 @@ PP(pp_getlogin)
         RETPUSHUNDEF;
     sv_setpv_mg(TARG, tmps);
     PUSHs(TARG);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "getlogin");
 #endif
@@ -5946,7 +5946,7 @@ PP(pp_syscall)
     }
     SP = ORIGMARK;
     PUSHi(retval);
-    RETURN;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "syscall");
 #endif
