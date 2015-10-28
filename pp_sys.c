@@ -344,7 +344,7 @@ PP(pp_backtick)
     else {
         STATUS_NATIVE_CHILD_SET(-1);
         if (gimme == G_SCALAR)
-            RETPUSHUNDEF;
+            PUSHundef;
     }
 
     return NORMAL_RETURN;
@@ -641,7 +641,7 @@ PP(pp_open)
     else if (PL_forkprocess == 0)		/* we are a new child */
         PUSHi(0);
     else
-        RETPUSHUNDEF;
+        PUSHundef;
     return NORMAL_RETURN;
 }
 
@@ -715,10 +715,12 @@ PP(pp_pipe_op)
         (fcntl(fd[1], F_SETFD,fd[1] > PL_maxsysfd) < 0))
         goto badexit;
 #endif
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
 
   badexit:
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "pipe");
 #endif
@@ -732,8 +734,11 @@ PP(pp_fileno)
     PerlIO *fp;
     const MAGIC *mg;
 
-    if (MAXARG < 1)
-        RETPUSHUNDEF;
+    if (MAXARG < 1) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
+
     gv = MUTABLE_GV(POPs);
     io = GvIO(gv);
 
@@ -746,7 +751,6 @@ PP(pp_fileno)
     if (io && IoDIRP(io)) {
 #if defined(HAS_DIRFD) || defined(HAS_DIR_DD_FD)
         PUSHi(my_dirfd(IoDIRP(io)));
-        return NORMAL_RETURN;
 #else
 #if defined(ENOTSUP)
         errno = ENOTSUP;        /* Operation not supported */
@@ -755,8 +759,9 @@ PP(pp_fileno)
 #else
         errno = EINVAL;         /* Invalid argument */
 #endif
-        RETPUSHUNDEF;
+        PUSHundef;
 #endif
+        return NORMAL_RETURN;
     }
 
     if (!io || !(fp = IoIFP(io))) {
@@ -765,7 +770,8 @@ PP(pp_fileno)
 
            report_evil_fh(gv);
             */
-        RETPUSHUNDEF;
+        PUSHundef;
+        return NORMAL_RETURN;
     }
 
     PUSHi(PerlIO_fileno(fp));
@@ -810,8 +816,10 @@ PP(pp_binmode)
     PerlIO *fp;
     SV *discp = NULL;
 
-    if (MAXARG < 1)
-        RETPUSHUNDEF;
+    if (MAXARG < 1) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
     if (MAXARG > 1) {
         discp = POPs;
     }
@@ -835,7 +843,8 @@ PP(pp_binmode)
     if (!io || !(fp = IoIFP(io))) {
         report_evil_fh(gv);
         SETERRNO(EBADF,RMS_IFI);
-        RETPUSHUNDEF;
+        PUSHundef;
+        return NORMAL_RETURN;
     }
 
     PUTBACK;
@@ -850,16 +859,18 @@ PP(pp_binmode)
             if (IoOFP(io) && IoOFP(io) != IoIFP(io)) {
                 if (!PerlIO_binmode(aTHX_ IoOFP(io), IoTYPE(io), mode, d)) {
                     SPAGAIN;
-                    RETPUSHUNDEF;
+                    PUSHundef;
+                    return NORMAL_RETURN;
                 }
             }
             SPAGAIN;
-            RETPUSHYES;
+            PUSHyes;
         }
         else {
             SPAGAIN;
-            RETPUSHUNDEF;
+            PUSHundef;
         }
+        return NORMAL_RETURN;
     }
 }
 
@@ -981,11 +992,16 @@ PP(pp_untie)
     const char how = (SvTYPE(sv) == SVt_PVHV || SvTYPE(sv) == SVt_PVAV)
                 ? PERL_MAGIC_tied : PERL_MAGIC_tiedscalar;
 
-    if (isGV_with_GP(sv) && !SvFAKE(sv) && !(sv = MUTABLE_SV(GvIOp(sv))))
-        RETPUSHYES;
+    if (isGV_with_GP(sv) && !SvFAKE(sv) && !(sv = MUTABLE_SV(GvIOp(sv)))) {
+        PUSHyes;
+        return NORMAL_RETURN;
+    }
 
     if (SvTYPE(sv) == SVt_PVLV && LvTYPE(sv) == 'y' &&
-        !(sv = defelem_target(sv, NULL))) RETPUSHUNDEF;
+        !(sv = defelem_target(sv, NULL))) {
+        PUSHyes;
+        return NORMAL_RETURN;
+    }
 
     if ((mg = SvTIED_mg(sv, how))) {
         SV * const obj = SvRV(SvTIED_obj(sv, mg));
@@ -1010,7 +1026,8 @@ PP(pp_untie)
         }
     }
     sv_unmagic(sv, how) ;
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
 }
 
 PP(pp_tied)
@@ -1338,7 +1355,8 @@ PP(pp_getc)
         if (!io || (!IoIFP(io) && IoTYPE(io) != IoTYPE_WRONLY))
             report_evil_fh(gv);
         SETERRNO(EBADF,RMS_IFI);
-        RETPUSHUNDEF;
+        PUSHundef;
+        return NORMAL_RETURN;
     }
     TAINT;
     sv_setpvs(TARG, " ");
@@ -1405,7 +1423,8 @@ PP(pp_enterwrite)
     }
     io = GvIO(gv);
     if (!io) {
-        RETPUSHNO;
+        PUSHno;
+        return NORMAL_RETURN;
     }
     if (IoFMT_GV(io))
         fgv = IoFMT_GV(io);
@@ -1707,7 +1726,8 @@ PP(pp_sysread)
         char namebuf[MAXPATHLEN];
         if (fd < 0) {
             SETERRNO(EBADF,SS_IVCHAN);
-            RETPUSHUNDEF;
+            PUSHundef;
+            return NORMAL_RETURN;
         }
 #if (defined(VMS_DO_SOCKETS) && defined(DECCRTL_SOCKETS)) || defined(__QNXNTO__)
         bufsize = sizeof (struct sockaddr_in);
@@ -1722,8 +1742,10 @@ PP(pp_sysread)
         /* 'offset' means 'flags' here */
         count = PerlSock_recvfrom(fd, buffer, length, offset,
                                   (struct sockaddr *)namebuf, &bufsize);
-        if (count < 0)
-            RETPUSHUNDEF;
+        if (count < 0) {
+            PUSHundef;
+            return NORMAL_RETURN;
+        }
         /* MSG_TRUNC can give oversized count; quietly lose it */
         if (count > length)
             count = length;
@@ -1879,7 +1901,8 @@ PP(pp_sysread)
 
   say_undef:
     SP = ORIGMARK;
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 }
 
 
@@ -2083,7 +2106,8 @@ PP(pp_syswrite)
   say_undef:
     Safefree(tmpbuf);
     SP = ORIGMARK;
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 }
 
 PP(pp_eof)
@@ -2121,8 +2145,10 @@ PP(pp_eof)
         }
     }
 
-    if (!gv)
-        RETPUSHNO;
+    if (!gv) {
+        PUSHno;
+        return NORMAL_RETURN;
+    }
 
     if ((io = GvIO(gv)) && (mg = SvTIED_mg((const SV *)io, PERL_MAGIC_tiedscalar))) {
         return tied_method1(SV_CONST(EOF), SP, MUTABLE_SV(io), mg, newSVuv(which));
@@ -2144,8 +2170,10 @@ PP(pp_eof)
                 else
                     *svp = newSVpvs("-");
             }
-            else if (!nextargv(gv, FALSE))
-                RETPUSHYES;
+            else if (!nextargv(gv, FALSE)) {
+                PUSHyes;
+                return NORMAL_RETURN;
+            }
         }
     }
 
@@ -2318,11 +2346,14 @@ PP(pp_truncate)
 #endif
         }
 
-        if (result)
-            RETPUSHYES;
-        if (!errno)
-            SETERRNO(EBADF,RMS_IFI);
-        RETPUSHUNDEF;
+        if (result) {
+            PUSHyes;
+        } else {
+            if (!errno)
+                SETERRNO(EBADF,RMS_IFI);
+            PUSHundef;
+        }
+        return NORMAL_RETURN;
     }
 }
 
@@ -2343,7 +2374,8 @@ PP(pp_ioctl)
     if (!IoIFP(io)) {
         report_evil_fh(gv);
         SETERRNO(EBADF,RMS_IFI);	/* well, sort of... */
-        RETPUSHUNDEF;
+        PUSHundef;
+        return NORMAL_RETURN;
     }
 
     if (SvPOK(argsv) || !SvNIOK(argsv)) {
@@ -2392,8 +2424,10 @@ PP(pp_ioctl)
         SvSETMAGIC(argsv);		/* Assume it has changed */
     }
 
-    if (retval == -1)
-        RETPUSHUNDEF;
+    if (retval == -1) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
     if (retval != 0) {
         PUSHi(retval);
     }
@@ -2452,7 +2486,8 @@ PP(pp_socket)
     fd = PerlSock_socket(domain, type, protocol);
     if (fd < 0) {
         SETERRNO(EBADF,RMS_IFI);
-        RETPUSHUNDEF;
+        PUSHundef;
+        return NORMAL_RETURN;
     }
     IoIFP(io) = PerlIO_fdopen(fd, "r"SOCKET_OPEN_MODE);	/* stdio gets confused about sockets */
     IoOFP(io) = PerlIO_fdopen(fd, "w"SOCKET_OPEN_MODE);
@@ -2461,14 +2496,18 @@ PP(pp_socket)
         if (IoIFP(io)) PerlIO_close(IoIFP(io));
         if (IoOFP(io)) PerlIO_close(IoOFP(io));
         if (!IoIFP(io) && !IoOFP(io)) PerlLIO_close(fd);
-        RETPUSHUNDEF;
+        PUSHundef;
+        return NORMAL_RETURN;
     }
 #if defined(HAS_FCNTL) && defined(F_SETFD)
-    if (fcntl(fd, F_SETFD, fd > PL_maxsysfd) < 0)	/* ensure close-on-exec */
-        RETPUSHUNDEF;
+    if (fcntl(fd, F_SETFD, fd > PL_maxsysfd) < 0) {	/* ensure close-on-exec */
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
 #endif
 
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
 }
 #endif
 
@@ -2492,8 +2531,10 @@ PP(pp_sockpair)
         do_close(gv2, FALSE);
 
     TAINT_PROPER("socketpair");
-    if (PerlSock_socketpair(domain, type, protocol, fd) < 0)
-        RETPUSHUNDEF;
+    if (PerlSock_socketpair(domain, type, protocol, fd) < 0) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
     IoIFP(io1) = PerlIO_fdopen(fd[0], "r"SOCKET_OPEN_MODE);
     IoOFP(io1) = PerlIO_fdopen(fd[0], "w"SOCKET_OPEN_MODE);
     IoTYPE(io1) = IoTYPE_SOCKET;
@@ -2507,16 +2548,20 @@ PP(pp_sockpair)
         if (IoIFP(io2)) PerlIO_close(IoIFP(io2));
         if (IoOFP(io2)) PerlIO_close(IoOFP(io2));
         if (!IoIFP(io2) && !IoOFP(io2)) PerlLIO_close(fd[1]);
-        RETPUSHUNDEF;
+        PUSHundef;
+        return NORMAL_RETURN;
     }
 #if defined(HAS_FCNTL) && defined(F_SETFD)
     /* ensure close-on-exec */
     if ((fcntl(fd[0],F_SETFD,fd[0] > PL_maxsysfd) < 0) ||
-        (fcntl(fd[1],F_SETFD,fd[1] > PL_maxsysfd) < 0))
-        RETPUSHUNDEF;
+        (fcntl(fd[1],F_SETFD,fd[1] > PL_maxsysfd) < 0)) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
 #endif
 
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_sock_func, "socketpair");
 #endif
@@ -2551,14 +2596,16 @@ PP(pp_bind)
          ? PerlSock_bind(fd, (struct sockaddr *)addr, len)
          : PerlSock_connect(fd, (struct sockaddr *)addr, len))
         >= 0)
-        RETPUSHYES;
+        PUSHyes;
     else
-        RETPUSHUNDEF;
+        PUSHundef;
+    return NORMAL_RETURN;
 
   nuts:
     report_evil_fh(gv);
     SETERRNO(EBADF,SS_IVCHAN);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 }
 
 PP(pp_listen)
@@ -2572,14 +2619,16 @@ PP(pp_listen)
         goto nuts;
 
     if (PerlSock_listen(PerlIO_fileno(IoIFP(io)), backlog) >= 0)
-        RETPUSHYES;
+        PUSHyes;
     else
-        RETPUSHUNDEF;
+        PUSHundef;
+    return NORMAL_RETURN;
 
   nuts:
     report_evil_fh(gv);
     SETERRNO(EBADF,SS_IVCHAN);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 }
 
 PP(pp_accept)
@@ -2643,7 +2692,8 @@ PP(pp_accept)
     SETERRNO(EBADF,SS_IVCHAN);
 
   badexit:
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 
 }
 
@@ -2663,7 +2713,8 @@ PP(pp_shutdown)
   nuts:
     report_evil_fh(gv);
     SETERRNO(EBADF,SS_IVCHAN);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 }
 
 
@@ -2744,7 +2795,8 @@ PP(pp_ssockopt)
     report_evil_fh(gv);
     SETERRNO(EBADF,SS_IVCHAN);
   nuts2:
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 
 }
 
@@ -2808,7 +2860,8 @@ PP(pp_getpeername)
     report_evil_fh(gv);
     SETERRNO(EBADF,SS_IVCHAN);
   nuts2:
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 }
 
 #endif
@@ -4012,8 +4065,10 @@ PP(pp_readlink)
     /* NOTE: if the length returned by readlink() is sizeof(buf) - 1,
      * it is impossible to know whether the result was truncated. */
     len = readlink(tmps, buf, sizeof(buf) - 1);
-    if (len < 0)
-        RETPUSHUNDEF;
+    if (len < 0) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
     if (len != -1)
         buf[len] = '\0';
     PUSHp(buf, len);
@@ -4194,11 +4249,13 @@ PP(pp_open_dir)
     if (!(IoDIRP(io) = PerlDir_open(dirname)))
         goto nope;
 
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_DIR);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_dir_func, "opendir");
 #endif
@@ -4242,17 +4299,17 @@ PP(pp_readdir)
     } while (gimme == G_ARRAY);
 
     if (!dp && gimme != G_ARRAY)
-        RETPUSHUNDEF;
+        PUSHundef;
 
     return NORMAL_RETURN;
 
   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_ISI);
-    if (gimme == G_ARRAY)
-        return NORMAL_RETURN;
-    else
-        RETPUSHUNDEF;
+    if (gimme != G_ARRAY)
+        PUSHundef;
+
+    return NORMAL_RETURN;
 #endif
 }
 
@@ -4282,7 +4339,8 @@ PP(pp_telldir)
   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_ISI);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_dir_func, "telldir");
 #endif
@@ -4304,11 +4362,13 @@ PP(pp_seekdir)
     }
     (void)PerlDir_seek(IoDIRP(io), along);
 
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_ISI);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_dir_func, "seekdir");
 #endif
@@ -4328,11 +4388,13 @@ PP(pp_rewinddir)
         goto nope;
     }
     (void)PerlDir_rewind(IoDIRP(io));
-    RETPUSHYES;
-  nope:
+    PUSHyes;
+    return NORMAL_RETURN;
+   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_ISI);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_dir_func, "rewinddir");
 #endif
@@ -4361,11 +4423,13 @@ PP(pp_closedir)
 #endif
     IoDIRP(io) = 0;
 
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
   nope:
     if (!errno)
         SETERRNO(EBADF,RMS_IFI);
-    RETPUSHUNDEF;
+    PUSHundef;
+    return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_dir_func, "closedir");
 #endif
@@ -4403,8 +4467,10 @@ PP(pp_fork)
         RESTORE_ERRNO;
     }
 #endif
-    if (childpid < 0)
-        RETPUSHUNDEF;
+    if (childpid < 0) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
     if (!childpid) {
 #ifdef PERL_USES_PL_PIDSTATUS
         hv_clear(PL_pidstatus);	/* no kids, so don't wait for 'em */
@@ -4420,9 +4486,11 @@ PP(pp_fork)
     EXTEND(SP, 1);
     PERL_FLUSHALL_FOR_CHILD;
     childpid = PerlProc_fork();
-    if (childpid == -1)
-        RETPUSHUNDEF;
-    PUSHi(childpid);
+    if (childpid == -1) {
+        PUSHundef;
+    } else {
+        PUSHi(childpid);
+    }
     return NORMAL_RETURN;
 #  else
     DIE(aTHX_ PL_no_func, "fork");
@@ -4595,8 +4663,10 @@ PP(pp_system)
         if (did_pipes) {
             PerlLIO_close(pp[0]);
 #if defined(HAS_FCNTL) && defined(F_SETFD)
-            if (fcntl(pp[1], F_SETFD, FD_CLOEXEC) < 0)
-                RETPUSHUNDEF;
+            if (fcntl(pp[1], F_SETFD, FD_CLOEXEC) < 0) {
+                PUSHundef;
+                return NORMAL_RETURN;
+            }
 #endif
         }
         if (PL_op->op_flags & OPf_STACKED) {
@@ -4998,8 +5068,10 @@ PP(pp_gmtime)
 
     if (GIMME_V != G_ARRAY) {	/* scalar context */
         EXTEND(SP, 1);
-        if (err == NULL)
-            RETPUSHUNDEF;
+        if (err == NULL) {
+            PUSHundef;
+            return NORMAL_RETURN;
+        }
        else {
            dTARGET;
            PUSHs(TARG);
@@ -5040,8 +5112,9 @@ PP(pp_alarm)
     anum = POPi;
     anum = alarm((unsigned int)anum);
     if (anum < 0)
-        RETPUSHUNDEF;
-    PUSHi(anum);
+        PUSHundef;
+    else
+        PUSHi(anum);
     return NORMAL_RETURN;
 #else
     DIE(aTHX_ PL_no_func, "alarm");
@@ -5113,8 +5186,9 @@ PP(pp_semget)
     const int anum = do_ipcget(PL_op->op_type, MARK, SP);
     SP = MARK;
     if (anum == -1)
-        RETPUSHUNDEF;
-    PUSHi(anum);
+        PUSHundef;
+    else
+        PUSHi(anum);
     return NORMAL_RETURN;
 #else
     DIE(aTHX_ "System V IPC is not implemented on this machine");
@@ -5129,8 +5203,10 @@ PP(pp_semctl)
     dSP; dMARK; dTARGET;
     const int anum = do_ipcctl(PL_op->op_type, MARK, SP);
     SP = MARK;
-    if (anum == -1)
-        RETPUSHUNDEF;
+    if (anum == -1) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
     if (anum != 0) {
         PUSHi(anum);
     }
@@ -5572,7 +5648,8 @@ PP(pp_ehostent)
         break;
     }
     EXTEND(SP,1);
-    RETPUSHYES;
+    PUSHyes;
+    return NORMAL_RETURN;
 }
 
 
@@ -5868,8 +5945,10 @@ PP(pp_getlogin)
     dSP; dTARGET;
     char *tmps;
     EXTEND(SP, 1);
-    if (!(tmps = PerlProc_getlogin()))
-        RETPUSHUNDEF;
+    if (!(tmps = PerlProc_getlogin())) {
+        PUSHundef;
+        return NORMAL_RETURN;
+    }
     sv_setpv_mg(TARG, tmps);
     PUSHs(TARG);
     return NORMAL_RETURN;
