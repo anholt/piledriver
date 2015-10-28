@@ -289,9 +289,24 @@ S_emulate_eaccess(pTHX_ const char* path, Mode_t mode)
 #   define PERL_EFF_ACCESS(p,f) (S_emulate_eaccess(aTHX_ (p), (f)))
 #endif
 
-PP(pp_backtick)
+/* Defines PP() thunk wrapper around a C function that handles the
+ * saving and restoring of the perl stack.
+ */
+#define PP_NORMAL(s)				\
+static SV **Perl_c_##s(pTHX_ SV **SP);		\
+						\
+PP(s)						\
+{						\
+    dSP;					\
+    SP = Perl_c_##s(aTHX sp);			\
+    RETURN;					\
+}						\
+						\
+static SV **Perl_c_##s(pTHX_ SV **SP)
+
+PP_NORMAL(pp_backtick)
 {
-    dSP; dTARGET;
+    dTARGET;
     PerlIO *fp;
     const char * const tmps = POPpconstx;
     const I32 gimme = GIMME_V;
@@ -344,10 +359,10 @@ PP(pp_backtick)
     else {
         STATUS_NATIVE_CHILD_SET(-1);
         if (gimme == G_SCALAR)
-            RETPUSHUNDEF;
+            PUSHundef;
     }
 
-    RETURN;
+    return sp;
 }
 
 PP(pp_glob)
@@ -772,9 +787,8 @@ PP(pp_fileno)
     RETURN;
 }
 
-PP(pp_umask)
+PP_NORMAL(pp_umask)
 {
-    dSP;
 #ifdef HAS_UMASK
     dTARGET;
     Mode_t anum;
@@ -799,7 +813,7 @@ PP(pp_umask)
         DIE(aTHX_ "umask not implemented");
     XPUSHs(&PL_sv_undef);
 #endif
-    RETURN;
+    return sp;
 }
 
 PP(pp_binmode)
@@ -863,9 +877,9 @@ PP(pp_binmode)
     }
 }
 
-PP(pp_tie)
+PP_NORMAL(pp_tie)
 {
-    dSP; dMARK;
+    dMARK;
     HV* stash;
     GV *gv = NULL;
     SV *sv;
@@ -967,13 +981,13 @@ PP(pp_tie)
     LEAVE_with_name("call_TIE");
     SP = PL_stack_base + markoff;
     PUSHs(sv);
-    RETURN;
+    return SP;
 }
 
 
 /* also used for: pp_dbmclose() */
 
-PP(pp_untie)
+PP_NORMAL(pp_untie)
 {
     dSP;
     MAGIC *mg;
@@ -981,11 +995,16 @@ PP(pp_untie)
     const char how = (SvTYPE(sv) == SVt_PVHV || SvTYPE(sv) == SVt_PVAV)
                 ? PERL_MAGIC_tied : PERL_MAGIC_tiedscalar;
 
-    if (isGV_with_GP(sv) && !SvFAKE(sv) && !(sv = MUTABLE_SV(GvIOp(sv))))
-        RETPUSHYES;
+    if (isGV_with_GP(sv) && !SvFAKE(sv) && !(sv = MUTABLE_SV(GvIOp(sv)))) {
+	PUSHyes;
+	return SP;
+    }
 
     if (SvTYPE(sv) == SVt_PVLV && LvTYPE(sv) == 'y' &&
-        !(sv = defelem_target(sv, NULL))) RETPUSHUNDEF;
+        !(sv = defelem_target(sv, NULL))) {
+	PUSHundef;
+	return SP;
+    }
 
     if ((mg = SvTIED_mg(sv, how))) {
         SV * const obj = SvRV(SvTIED_obj(sv, mg));
@@ -1010,7 +1029,8 @@ PP(pp_untie)
         }
     }
     sv_unmagic(sv, how) ;
-    RETPUSHYES;
+    PUSHyes;
+    return SP;
 }
 
 PP(pp_tied)
